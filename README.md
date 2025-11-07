@@ -11,3 +11,15 @@ El portal:
 3. Busca en New Relic usando ese token
 4. Recibe logs donde aparece ese token
 5. Resultado: El equipo de soporte puede ver todos los logs relacionados sin que New Relic almacene el RUT real
+
+```
+Conceptual:
+
+Apps (Splunk) → OpenTelemetry Collector → New Relic
+                    ↓
+              Token Vault Service
+              (Azure Key Vault / HashiCorp Vault)
+                    ↑
+              Support Portal/API
+              (Para búsquedas)
+```
