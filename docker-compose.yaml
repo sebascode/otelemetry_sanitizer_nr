@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  tokenizer:
+    build: ./tokenizer
+    ports:
+      - "5000:5000"
+    environment:
+      - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING}
+    restart: always
+
+  otel-proxy:
+    build: ./otel-proxy
+    ports:
+      - "4319:4319"
+    depends_on:
+      - tokenizer
+    restart: always
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    volumes:
+      - ./otel-config.yaml:/etc/otel/config.yaml
+    ports:
+      - "8088:8088"  # Splunk HEC
+      - "9514:9514"  # Syslog
+    environment:
+      - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
+    command: ["--config=/etc/otel/config.yaml"]
+    depends_on:
+      - otel-proxy
+    restart: always
+
+  support-portal:
+    build: ./support-portal
+    ports:
+      - "8080:8080"
+    environment:
+      - NEWRELIC_API_KEY=${NEWRELIC_API_KEY}
+      - NEWRELIC_ACCOUNT_ID=${NEWRELIC_ACCOUNT_ID}
+    depends_on:
+      - tokenizer
+    restart: always

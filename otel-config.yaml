@@ -1,0 +1,66 @@
+receivers:
+  # Consumir de Splunk HEC
+  splunk_hec:
+    endpoint: 0.0.0.0:8088
+    access_token_passthrough: true
+  
+  # Alternativa: O desde Splunk forwarders
+  tcplog:
+    listen_address: "0.0.0.0:9514"
+    operators:
+      - type: regex_parser
+        regex: '^(?P<timestamp>\S+)\s+(?P<host>\S+)\s+(?P<message>.*)$'
+
+processors:
+  # Tockenization
+  transform:
+    log_statements:
+      - context: log
+        statements:
+          - set(attributes["_original_body"], body)
+
+  # Processor de tokenización
+  tokenization:
+    endpoint: "http://localhost:5000/tokenize"
+    timeout: 5s
+    
+  # metadata de tokenización
+  attributes:
+    actions:
+      - key: tokenization.enabled
+        value: true
+        action: insert
+      - key: tokenization.timestamp
+        value: ${env:TIMESTAMP}
+        action: insert
+
+  # Batch
+  batch:
+    timeout: 10s
+    send_batch_size: 1024
+
+exporters:
+
+  # Primero pasa por el proxy tokenizador (otel_tockenizer_proxy.py)
+  otlphttp/tokenizer:
+    endpoint: http://localhost:4319
+    compression: none
+
+  # Después a New Relic (Cloud)
+  otlphttp:
+    endpoint: https://otlp.nr-data.net
+    headers:
+      api-key: "${env:NEW_RELIC_LICENSE_KEY}"
+    compression: gzip
+  
+  # Mantener copia en Splunk (opcional, para transición)
+  splunk_hec/backup:
+    endpoint: "https://splunk.company.com:8088"
+    token: "${env:SPLUNK_HEC_TOKEN}"
+
+service:
+  pipelines:
+    logs:
+      receivers: [splunk_hec, tcplog]
+      processors: [tokenization, transform, attributes, batch]
+      exporters: [otlphttp]
