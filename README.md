@@ -23,3 +23,5 @@ Apps (Splunk) → OpenTelemetry Collector → New Relic
               Support Portal/API
               (Para búsquedas)
 ```
+
+En caso de consultas: Sebas Contreras.
